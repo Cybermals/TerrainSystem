@@ -1,8 +1,15 @@
 extends Spatial
 
+signal progress(chunks_loaded, total_chunks)
+signal terrain_loaded
+
 export var chunk_size = 64
 var uv_inc
 var texture
+var _material = null
+var chunks_loaded
+var total_chunks
+var progress_mutex = Mutex.new()
 
 
 func _ready():
@@ -28,6 +35,12 @@ func load_terrain(path):
 	    1.0 / size.x,
 	    1.0 / size.y
 	)
+	chunks_loaded = 0
+	total_chunks = (((size.x - 1) / chunk_size) * 
+	    ((size.y - 1) / chunk_size))
+	
+	#Get thread pool
+	var pool = get_node("ThreadPool")
 	
 	#Create chunks
 	#Note: Heightmaps should always have a width and height
@@ -37,17 +50,39 @@ func load_terrain(path):
 	#chunks that have exactly one row and one column of
 	#overlap. The overlap prevents ugly gaps in the terrain
 	#that would appear at the seams where chunks meet.
-	for z in range(0, size.y - 1, chunk_size):
-		for x in range(0, size.x - 1, chunk_size):
-			load_chunk(heightmap.get_rect(
-			    Rect2(x, z, chunk_size + 1, chunk_size + 1)), 
-			    Vector2(x, z), uv_inc)
+	if pool:
+		for z in range(0, size.y - 1, chunk_size):
+			for x in range(0, size.x - 1, chunk_size):
+				pool.queue_job(
+				    funcref(self, "load_chunk"),
+				    [
+				        heightmap.get_rect(Rect2(
+				            x, z, 
+				            chunk_size + 1, chunk_size + 1)), 
+				        Vector2(x, z), 
+				        uv_inc
+					]
+				)
+				
+	else:
+		for z in range(0, size.y - 1, chunk_size):
+			for x in range(0, size.x - 1, chunk_size):
+				load_chunk([
+				    heightmap.get_rect(Rect2(
+				        x, z, 
+				        chunk_size + 1, chunk_size + 1)), 
+				    Vector2(x, z), 
+				    uv_inc
+				])
 			
 	return true
 	
 	
-func load_chunk(heightmap, pos, uv_inc):
+func load_chunk(data):
 	#Create new mesh instance
+	var heightmap = data[0]
+	var pos = data[1]
+	var uv_inc = data[2]
 	#print("Loading chunk at " + str(pos))
 	var chunk = MeshInstance.new()
 	chunk.set_name("TerrainChunk")
@@ -55,7 +90,7 @@ func load_chunk(heightmap, pos, uv_inc):
 	chunk.set_translation(Vector3(pos.x, 0.0, pos.y))
 	add_child(chunk)
 	
-	#Generate terrain mesh
+	#Generate geometry data
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.add_smooth_group(true)
@@ -81,14 +116,27 @@ func load_chunk(heightmap, pos, uv_inc):
 	st.generate_normals()
 	var mesh = st.commit()
 	
-	#Assign mesh to chunk and generate collision shape
+	#Assign mesh to chunk, set its material, and generate 
+	#collision shape
 	chunk.set_mesh(mesh)
+	chunk.set_material_override(_material)
 	chunk.create_trimesh_collision()
+	
+	#Update chunk load progress
+	progress_mutex.lock()
+	chunks_loaded += 1
+	emit_signal("progress", chunks_loaded, total_chunks)
+	
+	if chunks_loaded == total_chunks:
+		emit_signal("terrain_loaded")
+		
+	progress_mutex.unlock()
 	
 	
 func set_material(material):
 	#Set the material for all of the chunks and set the
 	#UV increment for the shader
+	_material = material
 	get_tree().call_group(get_tree().GROUP_CALL_DEFAULT, 
 	    "TerrainChunks", "set_material_override", material)
 	material.set_shader_param("uv_inc", uv_inc)
