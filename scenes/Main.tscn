@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=1]
+[gd_scene load_steps=15 format=1]
 
 [ext_resource path="res://scripts/Main.gd" type="Script" id=1]
 [ext_resource path="res://images/dirt.png" type="Texture" id=2]
@@ -10,6 +10,8 @@
 [ext_resource path="res://addons/FlyCam/icon.png" type="Texture" id=8]
 [ext_resource path="res://addons/TerrainSystem/TerrainSystem.gd" type="Script" id=9]
 [ext_resource path="res://addons/TerrainSystem/icon.png" type="Texture" id=10]
+[ext_resource path="res://addons/ThreadPool/ThreadPool.gd" type="Script" id=11]
+[ext_resource path="res://addons/ThreadPool/icon.png" type="Texture" id=12]
 
 [sub_resource type="MaterialShader" id=1]
 
@@ -122,5 +124,17 @@ __meta__ = {
 "_editor_icon": ExtResource( 10 )
 }
 chunk_size = 64
+
+[node name="ThreadPool" type="Node" parent="TerrainSystem"]
+
+script/script = ExtResource( 11 )
+__meta__ = {
+"_editor_icon": ExtResource( 12 )
+}
+max_threads = 2
+
+[connection signal="progress" from="TerrainSystem" to="." method="_on_TerrainSystem_progress" flags=3]
+
+[connection signal="terrain_loaded" from="TerrainSystem" to="." method="_on_TerrainSystem_terrain_loaded" flags=3]
 
 
