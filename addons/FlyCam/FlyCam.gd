@@ -33,19 +33,19 @@ func _process(delta):
 		inc.y = -speed * delta
 		
 	if Input.is_action_pressed("turn_left"):
-		rot.y += deg2rad(speed * 16 * delta)
+		rot.y += speed * 16 * delta
 		
 	elif Input.is_action_pressed("turn_right"):
-		rot.y += deg2rad(-speed * 16 * delta)
+		rot.y += -speed * 16 * delta
 		
 	if Input.is_action_pressed("look_up"):
-		rot.x += deg2rad(speed * 16 * delta)
+		rot.x += speed * 16 * delta
 		
 	elif Input.is_action_pressed("look_down"):
-		rot.x += deg2rad(-speed * 16 * delta)
+		rot.x += -speed * 16 * delta
 		
-	transform.origin += inc.rotated(Vector3(0.0, -1.0, 0.0), rot.y)
+	transform.origin += inc.rotated(Vector3(0.0, -1.0, 0.0), deg2rad(rot.y))
 	transform.basis = Matrix3()
 	set_transform(transform)
-	rotate(Vector3(0.0, -1.0, 0.0), rot.y)
-	rotate(Vector3(-1.0, 0.0, 0.0), rot.x)
+	rotate(Vector3(0.0, -1.0, 0.0), deg2rad(rot.y))
+	rotate(Vector3(-1.0, 0.0, 0.0), deg2rad(rot.x))
