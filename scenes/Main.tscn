@@ -133,8 +133,8 @@ __meta__ = {
 }
 max_threads = 2
 
-[connection signal="progress" from="TerrainSystem" to="." method="_on_TerrainSystem_progress" flags=3]
+[connection signal="progress" from="TerrainSystem" to="." method="_on_TerrainSystem_progress"]
 
-[connection signal="terrain_loaded" from="TerrainSystem" to="." method="_on_TerrainSystem_terrain_loaded" flags=3]
+[connection signal="terrain_loaded" from="TerrainSystem" to="." method="_on_TerrainSystem_terrain_loaded"]
 
 
