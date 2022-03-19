@@ -88,7 +88,7 @@ func load_chunk(data):
 	chunk.set_name("TerrainChunk")
 	chunk.add_to_group("TerrainChunks")
 	chunk.set_translation(Vector3(pos.x, 0.0, pos.y))
-	add_child(chunk)
+	call_deferred("add_child", chunk)
 	
 	#Generate geometry data
 	var st = SurfaceTool.new()
