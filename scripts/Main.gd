@@ -14,8 +14,9 @@ func _ready():
 
 func _on_TerrainSystem_progress(chunks_loaded, total_chunks):
 	print(str(chunks_loaded) + " of " + str(total_chunks) + 
-	    " loaded.")
+		" loaded.")
 
 
 func _on_TerrainSystem_terrain_loaded():
 	print("Terrain loaded.")
+

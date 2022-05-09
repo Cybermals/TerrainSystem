@@ -48,3 +48,4 @@ func worker_thread(data):
 		
 		#Execute job
 		job[0].call_func(job[1])
+

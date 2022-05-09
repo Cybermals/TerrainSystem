@@ -1,11 +1,11 @@
-[gd_scene load_steps=15 format=1]
+[gd_scene load_steps=15 format=2]
 
 [ext_resource path="res://scripts/Main.gd" type="Script" id=1]
-[ext_resource path="res://images/dirt.png" type="Texture" id=2]
+[ext_resource path="res://images/grass.png" type="Texture" id=2]
 [ext_resource path="res://images/dirt-mask.png" type="Texture" id=3]
-[ext_resource path="res://images/grass.png" type="Texture" id=4]
-[ext_resource path="res://images/rock.png" type="Texture" id=5]
-[ext_resource path="res://images/rock-mask.png" type="Texture" id=6]
+[ext_resource path="res://images/rock-mask.png" type="Texture" id=4]
+[ext_resource path="res://images/dirt.png" type="Texture" id=5]
+[ext_resource path="res://images/rock.png" type="Texture" id=6]
 [ext_resource path="res://addons/FlyCam/FlyCam.gd" type="Script" id=7]
 [ext_resource path="res://addons/FlyCam/icon.png" type="Texture" id=8]
 [ext_resource path="res://addons/TerrainSystem/TerrainSystem.gd" type="Script" id=9]
@@ -13,128 +13,71 @@
 [ext_resource path="res://addons/ThreadPool/ThreadPool.gd" type="Script" id=11]
 [ext_resource path="res://addons/ThreadPool/icon.png" type="Texture" id=12]
 
-[sub_resource type="MaterialShader" id=1]
+[sub_resource type="Shader" id=1]
+code = "shader_type spatial;
 
-_code = {
-"fragment": "uniform vec2 uv_inc;
-uniform texture grass;
-uniform texture dirt_mask;
-uniform texture dirt;
-uniform texture rock_mask;
-uniform texture rock;
+uniform vec2 uv_inc;
+uniform sampler2D grass;
+uniform sampler2D dirt_mask;
+uniform sampler2D dirt;
+uniform sampler2D rock_mask;
+uniform sampler2D rock;
 
-//Set base pixel color
-DIFFUSE = tex(grass, UV / uv_inc).rgb;
-
-//Apply dirt layer
-if(tex(dirt_mask, UV).a > 0.0)
+void fragment()
 {
-    DIFFUSE = tex(dirt, UV / uv_inc).rgb;
-}
+	//Set base pixel color
+	ALBEDO = texture(grass, UV / uv_inc).rgb;
 
-//Apply rock layer
-if(tex(rock_mask, UV).a > 0.0)
-{
-    DIFFUSE = tex(rock, UV / uv_inc).rgb;
-}
-",
-"fragment_ofs": 0,
-"light": "",
-"light_ofs": 0,
-"vertex": "",
-"vertex_ofs": 0
-}
+	//Apply dirt layer
+	if(texture(dirt_mask, UV).a > 0.0)
+	{
+	    ALBEDO = texture(dirt, UV / uv_inc).rgb;
+	}
+
+	//Apply rock layer
+	if(texture(rock_mask, UV).a > 0.0)
+	{
+	    ALBEDO = texture(rock, UV / uv_inc).rgb;
+	}
+}"
 
 [sub_resource type="ShaderMaterial" id=2]
-
-flags/visible = true
-flags/double_sided = false
-flags/invert_faces = false
-flags/unshaded = false
-flags/on_top = false
-flags/lightmap_on_uv2 = true
-flags/colarray_is_srgb = false
-params/blend_mode = 0
-params/depth_draw = 1
-params/line_width = 2.93878e-39
-shader/shader = SubResource( 1 )
+shader = SubResource( 1 )
 shader_param/uv_inc = null
-shader_param/grass = ExtResource( 4 )
+shader_param/grass = ExtResource( 2 )
 shader_param/dirt_mask = ExtResource( 3 )
-shader_param/dirt = ExtResource( 2 )
-shader_param/rock_mask = ExtResource( 6 )
-shader_param/rock = ExtResource( 5 )
+shader_param/dirt = ExtResource( 5 )
+shader_param/rock_mask = ExtResource( 4 )
+shader_param/rock = ExtResource( 6 )
 
 [node name="Main" type="Node"]
-
-script/script = ExtResource( 1 )
+script = ExtResource( 1 )
 material = SubResource( 2 )
 
 [node name="FlyCam" type="Camera" parent="."]
-
-_import_transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 )
-transform/local = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 50, 256 )
-projection = 0
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 256, 50, 256 )
 fov = 45.0
 near = 0.1
-far = 100.0
-keep_aspect = 1
-current = false
-visible_layers = 1048575
-environment = null
-h_offset = 0.0
-v_offset = 0.0
-script/script = ExtResource( 7 )
+script = ExtResource( 7 )
 __meta__ = {
 "_editor_icon": ExtResource( 8 )
 }
-speed = 8
-rot = Vector3( 0, 0, 0 )
 
 [node name="DirectionalLight" type="DirectionalLight" parent="."]
-
-_import_transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 )
-transform/local = Transform( 1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 23.8784, 24.6693 )
-layers = 1
-params/enabled = true
-params/editor_only = false
-params/bake_mode = 0
-params/energy = 1.0
-colors/diffuse = Color( 1, 1, 1, 1 )
-colors/specular = Color( 1, 1, 1, 1 )
-shadow/shadow = false
-shadow/darkening = 0.0
-shadow/z_offset = 0.05
-shadow/z_slope_scale = 0.0
-shadow/esm_multiplier = 60.0
-shadow/blur_passes = 1.0
-projector = null
-operator = 0
-shadow/mode = 0
-shadow/max_distance = 0.0
-shadow/split_weight = 0.5
-shadow/zoffset_scale = 2.0
+transform = Transform( 1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 23.8784, 24.6693 )
 
 [node name="TerrainSystem" type="Spatial" parent="."]
-
-_import_transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 )
-transform/local = Transform( 1, 0, 0, 0, 50, 0, 0, 0, 1, 0, 0, 0 )
-script/script = ExtResource( 9 )
+transform = Transform( 1, 0, 0, 0, 50, 0, 0, 0, 1, 0, 0, 0 )
+script = ExtResource( 9 )
 __meta__ = {
 "_editor_icon": ExtResource( 10 )
 }
-chunk_size = 64
 
 [node name="ThreadPool" type="Node" parent="TerrainSystem"]
-
-script/script = ExtResource( 11 )
+script = ExtResource( 11 )
 __meta__ = {
 "_editor_icon": ExtResource( 12 )
 }
-max_threads = 2
 
 [connection signal="progress" from="TerrainSystem" to="." method="_on_TerrainSystem_progress"]
-
 [connection signal="terrain_loaded" from="TerrainSystem" to="." method="_on_TerrainSystem_terrain_loaded"]
-
-

@@ -44,8 +44,9 @@ func _process(delta):
 	elif Input.is_action_pressed("look_down"):
 		rot.x += -speed * 16 * delta
 		
-	transform.origin += inc.rotated(Vector3(0.0, -1.0, 0.0), deg2rad(rot.y))
-	transform.basis = Matrix3()
+	transform.origin += inc.rotated(Vector3(0.0, 1.0, 0.0), deg2rad(rot.y))
+	transform.basis = Basis()
 	set_transform(transform)
-	rotate(Vector3(0.0, -1.0, 0.0), deg2rad(rot.y))
-	rotate(Vector3(-1.0, 0.0, 0.0), deg2rad(rot.x))
+	rotate(Vector3(1.0, 0.0, 0.0), deg2rad(rot.x))
+	rotate(Vector3(0.0, 1.0, 0.0), deg2rad(rot.y))
+

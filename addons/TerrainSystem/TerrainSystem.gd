@@ -4,14 +4,12 @@ signal progress(chunks_loaded, total_chunks)
 signal terrain_loaded
 
 export var chunk_size = 64
-
-onready var thread_pool = get_node("ThreadPool")
-
 var uv_inc
 var texture
 var _material = null
 var chunks_loaded
 var total_chunks
+var progress_mutex = Mutex.new()
 
 
 func _ready():
@@ -30,16 +28,19 @@ func load_terrain(path):
 	
 	var heightmap = texture.get_data()
 	var size = Vector2(
-	    heightmap.get_width(),
-	    heightmap.get_height()
+		heightmap.get_width(),
+		heightmap.get_height()
 	)
 	uv_inc = Vector2(
-	    1.0 / size.x,
-	    1.0 / size.y
+		1.0 / size.x,
+		1.0 / size.y
 	)
 	chunks_loaded = 0
 	total_chunks = (((size.x - 1) / chunk_size) * 
-	    ((size.y - 1) / chunk_size))
+		((size.y - 1) / chunk_size))
+	
+	#Get thread pool
+	var pool = get_node("ThreadPool")
 	
 	#Create chunks
 	#Note: Heightmaps should always have a width and height
@@ -49,60 +50,59 @@ func load_terrain(path):
 	#chunks that have exactly one row and one column of
 	#overlap. The overlap prevents ugly gaps in the terrain
 	#that would appear at the seams where chunks meet.
-	if thread_pool:
+	if pool:
 		for z in range(0, size.y - 1, chunk_size):
 			for x in range(0, size.x - 1, chunk_size):
-				#Queue chunk load job
-				thread_pool.queue_job(
-				    funcref(self, "load_chunk"),
-				    [
-				        heightmap.get_rect(Rect2(
-				            x, z, 
-				            chunk_size + 1, chunk_size + 1)), 
-				        Vector2(x, z),
-				        uv_inc
+				pool.queue_job(
+					funcref(self, "load_chunk"),
+					[
+						heightmap.get_rect(Rect2(
+							x, z, 
+							chunk_size + 1, chunk_size + 1)), 
+						Vector2(x, z), 
+						uv_inc
 					]
 				)
 				
 	else:
 		for z in range(0, size.y - 1, chunk_size):
 			for x in range(0, size.x - 1, chunk_size):
-				#Load the chunk
 				load_chunk([
-				    heightmap.get_rect(Rect2(
-				        x, z, 
-				        chunk_size + 1, chunk_size + 1)), 
-				    Vector2(x, z),
-				    uv_inc
+					heightmap.get_rect(Rect2(
+						x, z, 
+						chunk_size + 1, chunk_size + 1)), 
+					Vector2(x, z), 
+					uv_inc
 				])
 			
 	return true
 	
 	
 func load_chunk(data):
-	#Fetch params
+	#Create new mesh instance
 	var heightmap = data[0]
 	var pos = data[1]
 	var uv_inc = data[2]
 	#print("Loading chunk at " + str(pos))
-	
-	#Create chunk
 	var chunk = MeshInstance.new()
 	chunk.set_name("TerrainChunk")
 	chunk.add_to_group("TerrainChunks")
-	chunk.set_translation(Vector3(pos.x, 0, pos.y))
+	chunk.set_translation(Vector3(pos.x, 0.0, pos.y))
 	
 	#Generate geometry data
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.add_smooth_group(true)
+	heightmap.lock()
 	
 	for z in range(chunk_size + 1):
 		for x in range(chunk_size + 1):
 			#Generate next vertex
 			st.add_uv((pos + Vector2(x, z)) * uv_inc)
 			st.add_vertex(Vector3(x, 
-			    heightmap.get_pixel(x, z).r, z))
+				heightmap.get_pixel(x, z).r, z))
+				
+	heightmap.unlock()
 			
 	for z in range(chunk_size):
 		for x in range(chunk_size):
@@ -116,75 +116,37 @@ func load_chunk(data):
 			st.add_index(z * (chunk_size + 1) + x)
 	
 	st.generate_normals()
-	
-	#Finish the terrain mesh
-	#Note: We cannot do this in a background thread because
-	#SurfaceTool.commit is not thread-safe.
-	call_deferred("finish_mesh", chunk, st)
-	
-	
-func finish_mesh(chunk, st):
-	#Assign mesh and material to chunk
 	var mesh = st.commit()
+	
+	#Assign mesh to chunk, set its material, and generate 
+	#collision shape
 	chunk.set_mesh(mesh)
 	chunk.set_material_override(_material)
+	chunk.create_trimesh_collision()
 	
-	#Create collider
-	#Note: Generating collision shapes is resource intensive.
-	#Therefore we will let the thread pool handle this part.
-	if thread_pool:
-		#Queue collider generation job
-		thread_pool.queue_job(
-		    funcref(self, "generate_collider"),
-		    [
-		        chunk,
-		        mesh.get_faces()
-		    ]
-		)
-		
-	else:
-		#Generate collider
-		generate_collider(chunk, mesh.get_faces())
-		
-
-func generate_collider(data):
-	#Fetch params
-	var chunk = data[0]
-	var faces = data[1]
-	
-	#Generate collider
-	var shape = ConcavePolygonShape.new()
-	shape.set_faces(faces)
-	var collider = StaticBody.new()
-	collider.add_shape(shape)
-	chunk.add_child(collider)
-	
-	#Finish the chunk
-	#Note: Yet again, we cannot do this in a background
-	#thread. This time because adding a node to the scene
-	#tree isn't thread-safe.
-	call_deferred("finish_chunk", chunk)
-	
-	
-func finish_chunk(chunk):
 	#Add the chunk to the scene
-	add_child(chunk)
+	call_deferred("add_child", chunk)
 	
 	#Update chunk load progress
+	progress_mutex.lock()
 	chunks_loaded += 1
-	emit_signal("progress", chunks_loaded, total_chunks)
+	call_deferred("emit_signal", "progress", 
+		chunks_loaded, total_chunks)
 	
 	if chunks_loaded == total_chunks:
-		emit_signal("terrain_loaded")
-
+		call_deferred("emit_signal", 
+			"terrain_loaded")
+		
+	progress_mutex.unlock()
+	
 	
 func set_material(material):
 	#Set the material for all of the chunks and set the
 	#UV increment for the shader
 	_material = material
-	get_tree().call_deferred("call_group", 
-	    get_tree().GROUP_CALL_DEFAULT, "TerrainChunks",
-	    "set_material_override", material)
+	get_tree().call_deferred("call_group",
+		"TerrainChunks", 
+		"set_material_override", material)
 	material.set_shader_param("uv_inc", uv_inc)
 	
 	
@@ -212,5 +174,6 @@ func get_height(x, z):
 	
 func unload_terrain():
 	#Mark all terrain chunks to be freed
-	get_tree().call_group(get_tree().GROUP_CALL_DEFAULT,
-	    "TerrainChunks", "queue_free")
+	get_tree().call_group("TerrainChunks", 
+		"queue_free")
+
